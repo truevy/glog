@@ -1,7 +1,9 @@
 glog
 ====
 
-Leveled execution logs for Go.
+Leveled execution logs for Go. 
+
+<i>This fork does not use flags, but looks for env vars for each parameter </i>
 
 This is an efficient pure Go implementation of leveled logs in the
 manner of the open source C++ package
