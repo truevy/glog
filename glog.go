@@ -86,6 +86,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/caarlos0/env"
 )
 
 // severity identifies the sort of log: info, warning etc. It also implements
@@ -396,44 +398,6 @@ type flushSyncWriter interface {
 }
 
 func init() {
-	//flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
-	//flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
-	//flag.Var(&logging.verbosity, "v", "log level for V logs")
-	//flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
-	//flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
-	//flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
-
-	logtostderr := os.Getenv("glog.logtostderr")
-	if logtostderr != "" {
-		boolean, _ := strconv.ParseBool(logtostderr)
-		logging.toStderr = boolean
-	}
-	alsologtostderr := os.Getenv("glog.alsologtostderr")
-	if alsologtostderr != "" {
-		boolean, _ := strconv.ParseBool(logtostderr)
-		logging.alsoToStderr = boolean
-
-	}
-	verbosity := os.Getenv("glog.v")
-	if (verbosity != "") {
-		level, _ :=strconv.ParseInt(verbosity, 1, 32)
-		logging.verbosity = level
-	}
-	stderrthreshold := os.Getenv("glog.stderrthreshold")
-	if (verbosity != "") {
-		threshold, _ :=strconv.ParseInt(stderrthreshold, 1, 32)
-		logging.verbosity = threshold
-	}
-
-	vmodule := os.Getenv("glog.vmodule")
-	if vmodule != "" {
-		logging.vmodule = vmodule
-	}
-	tLocation := os.Getenv("glog.log_backtrace_at")
-	if tLocation != "" {
-		logging.traceLocation = tLocation
-	}
-
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
 
@@ -448,42 +412,44 @@ func Flush() {
 
 // loggingT collects all the global state of the logging setup.
 type loggingT struct {
-	// Boolean flags. Not handled atomically because the flag.Value interface
-	// does not let us avoid the =true, and that shorthand is necessary for
-	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
-	toStderr     bool // The -logtostderr flag.
-	alsoToStderr bool // The -alsologtostderr flag.
+							      // Boolean flags. Not handled atomically because the flag.Value interface
+							      // does not let us avoid the =true, and that shorthand is necessary for
+							      // compatibility. TODO: does this matter enough to fix? Seems unlikely.
+	toStderr     bool `env:"glog.logtostderr"`// The -logtostderr flag.
+	alsoToStderr bool `env:"glog.alsologtostderr"`// The -alsologtostderr flag.
 
-	// Level flag. Handled atomically.
-	stderrThreshold severity // The -stderrthreshold flag.
+							      // Level flag. Handled atomically.
+	stderrThreshold severity `env:"glog.stderrthreshold"` // The -stderrthreshold flag.
 
-	// freeList is a list of byte buffers, maintained under freeListMu.
+							      // freeList is a list of byte buffers, maintained under freeListMu.
 	freeList *buffer
-	// freeListMu maintains the free list. It is separate from the main mutex
-	// so buffers can be grabbed and printed to without holding the main lock,
-	// for better parallelization.
+							      // freeListMu maintains the free list. It is separate from the main mutex
+							      // so buffers can be grabbed and printed to without holding the main lock,
+							      // for better parallelization.
 	freeListMu sync.Mutex
 
-	// mu protects the remaining elements of this structure and is
-	// used to synchronize logging.
+							      // mu protects the remaining elements of this structure and is
+							      // used to synchronize logging.
 	mu sync.Mutex
-	// file holds writer for each of the log types.
+							      // file holds writer for each of the log types.
 	file [numSeverity]flushSyncWriter
-	// pcs is used in V to avoid an allocation when computing the caller's PC.
+							      // pcs is used in V to avoid an allocation when computing the caller's PC.
 	pcs [1]uintptr
-	// vmap is a cache of the V Level for each V() call site, identified by PC.
-	// It is wiped whenever the vmodule flag changes state.
+							      // vmap is a cache of the V Level for each V() call site, identified by PC.
+							      // It is wiped whenever the vmodule flag changes state.
 	vmap map[uintptr]Level
-	// filterLength stores the length of the vmodule filter chain. If greater
-	// than zero, it means vmodule is enabled. It may be read safely
-	// using sync.LoadInt32, but is only modified under mu.
+							      // filterLength stores the length of the vmodule filter chain. If greater
+							      // than zero, it means vmodule is enabled. It may be read safely
+							      // using sync.LoadInt32, but is only modified under mu.
 	filterLength int32
-	// traceLocation is the state of the -log_backtrace_at flag.
-	traceLocation traceLocation
-	// These flags are modified only under lock, although verbosity may be fetched
-	// safely using atomic.LoadInt32.
-	vmodule   moduleSpec // The state of the -vmodule flag.
-	verbosity Level      // V logging level, the value of the -v flag/
+							      // traceLocation is the state of the -log_backtrace_at flag.
+	traceLocation traceLocation `env:"glog.log_backtrace_at"`
+							      // These flags are modified only under lock, although verbosity may be fetched
+							      // safely using atomic.LoadInt32.
+	vmodule   moduleSpec  `env:"glog.vmodule"` // The state of the -vmodule flag.
+
+	verbosity Level  `env:"glog.v"`     // V logging level, the value of the -v flag/
+
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
