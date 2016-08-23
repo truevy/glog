@@ -4,6 +4,13 @@ glog
 Leveled execution logs for Go. 
 
 This fork does not use flags, but looks for env vars for each parameter
+Env Vars:
+glog.logtostderr
+glog.alsologtostderr
+glog.stderrthreshold
+glog.log_backtrace_at
+glog.vmodule
+glog.v
 
 This is an efficient pure Go implementation of leveled logs in the
 manner of the open source C++ package
