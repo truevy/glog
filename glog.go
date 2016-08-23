@@ -398,6 +398,9 @@ type flushSyncWriter interface {
 }
 
 func init() {
+
+	env.Parse(&logging)
+
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
 
